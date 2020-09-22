@@ -43,8 +43,8 @@ def main(args, cfg):
 
 
 def build_experiment(cfg):
-    generator = Unet.build(cfg['generator'])
-    discriminator = PatchGAN.build(cfg['discriminator'])
+    generator = Unet.build(cfg['model']['generator'])
+    discriminator = PatchGAN.build(cfg['model']['discriminator'])
     dataset = CloudTOPtoRGBDataset.build(cfg['dataset'])
 
     experiment = cGANCloudTOPtoRGB(generator=generator,
@@ -54,6 +54,7 @@ def build_experiment(cfg):
                                    optimizer_kwargs=cfg['optimizer'],
                                    lr_scheduler_kwargs=cfg['lr_scheduler'],
                                    dataloader_kwargs=cfg['dataset']['dataloader'],
+                                   supervision_weight=cfg['experiment']['supervision_weight'],
                                    seed=cfg['experiment']['seed'])
     return experiment
 
