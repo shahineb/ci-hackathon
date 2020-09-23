@@ -30,14 +30,14 @@ class Unet(ConvNet):
                                n_filters=enc_filters,
                                conv_kwargs=enc_kwargs)
 
-        self.decoder = NearestNeighborDecoder(input_size=self.encoder.output_size,
-                                              n_filters=dec_filters,
-                                              conv_kwargs=dec_kwargs)
+        self.decoder = Decoder(input_size=self.encoder.output_size,
+                               n_filters=dec_filters,
+                               conv_kwargs=dec_kwargs)
 
         self.output_layer = Conv2d(in_channels=dec_filters[-1],
                                    out_channels=out_channels,
-                                   kernel_size=3,
-                                   padding=1,
+                                   kernel_size=1,
+                                   padding=0,
                                    **out_kwargs)
 
     def forward(self, x):

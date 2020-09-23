@@ -10,6 +10,7 @@ Options:
 """
 from docopt import docopt
 import numpy as np
+import torch
 from torchvision.transforms import ToTensor
 from src.experiments import cGANCloudTOPtoRGB
 from src.models import Unet, PatchGAN
@@ -24,7 +25,8 @@ def main(args, cfg):
 
     predictions = np.zeros_like(Xtest)
     for i, x in enumerate(Xtest):
-        prediction = experiment.model(to_tensor(x).unsqueeze(0).cuda())
+        with torch.no_grad():
+            prediction = experiment.model(to_tensor(x).unsqueeze(0).cuda())
         predictions[i] = prediction.squeeze().permute(1, 2, 0).detach().cpu().numpy()
 
     np.save(args['--o'], predictions)
@@ -35,8 +37,8 @@ def build_experiment(args, cfg):
     discriminator = PatchGAN.build(cfg['model']['discriminator'])
     dataset = CloudTOPtoRGBDataset.build(cfg['dataset'])
 
-    experiment = cGANCloudTOPtoRGB.load_from_checkpoint(generator=generator,
-                                                        discriminator=discriminator,
+    experiment = cGANCloudTOPtoRGB.load_from_checkpoint(generator=generator.eval(),
+                                                        discriminator=discriminator.eval(),
                                                         dataset=dataset,
                                                         split=list(cfg['dataset']['split'].values()),
                                                         optimizer_kwargs=cfg['optimizer'],

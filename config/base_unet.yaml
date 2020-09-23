@@ -37,7 +37,7 @@ dataset:
   # Dataloading specifications
   dataloader:
     # Number of frames per batch
-    batch_size: 32
+    batch_size: 64
 
     # Number of workers for loading
     num_workers: 1
