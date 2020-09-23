@@ -30,9 +30,9 @@ class Unet(ConvNet):
                                n_filters=enc_filters,
                                conv_kwargs=enc_kwargs)
 
-        self.decoder = Decoder(input_size=self.encoder.output_size,
-                               n_filters=dec_filters,
-                               conv_kwargs=dec_kwargs)
+        self.decoder = NearestNeighborDecoder(input_size=self.encoder.output_size,
+                                              n_filters=dec_filters,
+                                              conv_kwargs=dec_kwargs)
 
         self.output_layer = Conv2d(in_channels=dec_filters[-1],
                                    out_channels=out_channels,
@@ -128,6 +128,33 @@ class Decoder(ConvNet):
     def forward(self, features):
         x = features.pop()
         for i, layer in enumerate(self.decoding_layers):
+            x = layer(x)
+            if len(features) > 0:
+                x = torch.cat([x, features.pop()], dim=1)
+        return x
+
+
+class NearestNeighborDecoder(ConvNet):
+
+    _base_kwargs = {'kernel_size': 2, 'stride': 1, 'relu': 'learn', 'bn': True, 'padding': 1}
+
+    def __init__(self, input_size, n_filters, conv_kwargs=None):
+        super().__init__(input_size=input_size)
+        self._conv_kwargs = self._init_kwargs_path(conv_kwargs, n_filters)
+        self.upsampling = nn.UpsamplingNearest2d(scale_factor=2)
+
+        # Build decoding layers doubling inputs nb of filters to account for skip connections
+        decoding_seq = [Conv2d(in_channels=self.input_size[0], out_channels=n_filters[0],
+                        **self._conv_kwargs[0])]
+        decoding_seq += [Conv2d(in_channels=2 * n_filters[i], out_channels=n_filters[i + 1],
+                         **self._conv_kwargs[i + 1]) for i in range(len(n_filters) - 1)]
+        self.decoding_layers = nn.Sequential(*decoding_seq)
+
+    def forward(self, features):
+        x = features.pop()
+        for i, layer in enumerate(self.decoding_layers):
+            if i > 0:
+                x = self.upsampling(x)
             x = layer(x)
             if len(features) > 0:
                 x = torch.cat([x, features.pop()], dim=1)

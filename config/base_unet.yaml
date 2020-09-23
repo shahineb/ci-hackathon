@@ -27,7 +27,7 @@ experiment:
 ############################################
 dataset:
   # Path to dataset
-  root: "../data/"
+  root: "data/"
 
   # Split ratio in [0, 1] - sum must be == 1
   split:
