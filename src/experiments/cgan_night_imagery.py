@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 
 from src.experiments.experiment import ImageTranslationExperiment
+from src.losses import SSIM
 from .utils import process_tensor_for_vis
 
 
@@ -51,6 +52,7 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
                          seed=seed)
         self.supervision_weight = supervision_weight
         self.discriminator = discriminator
+        self.ssim_criterion = SSIM()
 
     def forward(self, x):
         return self.generator(x)
@@ -115,7 +117,8 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
         psnr, ssim, sam = self._compute_iqa_metrics(pred_target, target)
 
         # Compute L1 regularization term
-        mae = F.smooth_l1_loss(pred_target, target)
+        # mae = F.smooth_l1_loss(pred_target, target)
+        mae = self.ssim_criterion(pred_target, target)
         return gen_loss, mae, psnr, ssim, sam
 
     def _step_discriminator(self, source, target):
