@@ -118,7 +118,7 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
 
         # Compute L1 regularization term
         # mae = F.smooth_l1_loss(pred_target, target)
-        mae = self.ssim_criterion(pred_target, target)
+        mae = 1 - self.ssim_criterion(pred_target, target)
         return gen_loss, mae, psnr, ssim, sam
 
     def _step_discriminator(self, source, target):
