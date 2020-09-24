@@ -1,77 +1,118 @@
 
 import torch
+import torch.nn as nn
 import torch.nn.functional as F
-from torch.autograd import Variable
-from math import exp
 
 
-def gaussian(window_size, sigma):
-    gauss = torch.Tensor([exp(-(x - window_size//2)**2/float(2*sigma**2)) for x in range(window_size)])
-    return gauss / gauss.sum()
+def heat_1d_kernel(kernel_size, sigma):
+    """Creates unidimensional heat kernel tensor
+
+    Args:
+        kernel_size (int): tensor size
+        sigma (float): gaussian standard deviation
+
+    Returns:
+        type: torch.Tensor
+
+    """
+    centered_x = torch.linspace(0, kernel_size - 1, kernel_size).sub(kernel_size // 2)
+    heat_1d_tensor = torch.exp(- centered_x.pow(2).div(float(2 * sigma**2)))
+    heat_1d_tensor.div_(heat_1d_tensor.sum())
+    return heat_1d_tensor
 
 
-def create_window(window_size, channel):
-    _1D_window = gaussian(window_size, 1.5).unsqueeze(1)
-    _2D_window = _1D_window.mm(_1D_window.t()).float().unsqueeze(0).unsqueeze(0)
-    window = Variable(_2D_window.expand(channel, 1, window_size, window_size).contiguous())
-    return window
+def heat_2d_kernel(kernel_size, channels):
+    """Creates square bidimensional heat kernel tensor with specified number of
+    channels
+
+    Args:
+        kernel_size (int): tensor size
+        sigma (float): gaussian standard deviation
+
+    Returns:
+        type: torch.Tensor
+
+    """
+    _1d_window = heat_1d_kernel(kernel_size, 1.5).unsqueeze(1)
+    _2d_window = _1d_window.mm(_1d_window.t()).float().unsqueeze(0).unsqueeze(0)
+    kernel = _2d_window.expand(channels, 1, kernel_size, kernel_size).contiguous()
+    return kernel
 
 
-def _ssim(img1, img2, window, window_size, channel, size_average = True):
-    mu1 = F.conv2d(img1, window, padding = window_size//2, groups = channel)
-    mu2 = F.conv2d(img2, window, padding = window_size//2, groups = channel)
+class SSIM(nn.Module):
+    """Differential module implementing Structural-Similarity index computation
 
-    mu1_sq = mu1.pow(2)
-    mu2_sq = mu2.pow(2)
-    mu1_mu2 = mu1*mu2
+    "Image quality assessment: from error visibility to structural similarity",
+    Wang et. al 2004
 
-    sigma1_sq = F.conv2d(img1*img1, window, padding = window_size//2, groups = channel) - mu1_sq
-    sigma2_sq = F.conv2d(img2*img2, window, padding = window_size//2, groups = channel) - mu2_sq
-    sigma12 = F.conv2d(img1*img2, window, padding = window_size//2, groups = channel) - mu1_mu2
+    Largely based on the work of https://github.com/Po-Hsun-Su/pytorch-ssim
 
-    C1 = 0.01**2
-    C2 = 0.03**2
-
-    ssim_map = ((2*mu1_mu2 + C1)*(2*sigma12 + C2))/((mu1_sq + mu2_sq + C1)*(sigma1_sq + sigma2_sq + C2))
-
-    if size_average:
-        return ssim_map.mean()
-    else:
-        return ssim_map.mean(1).mean(1).mean(1)
-
-
-class SSIM(torch.nn.Module):
-    def __init__(self, window_size=11, size_average=True):
+    Args:
+        kernel_size (int): convolutive kernel size
+        C1 (float): (default: 0.01 ** 2)
+        C2 (float): (default: 0.03 ** 2)
+    """
+    def __init__(self, kernel_size=11, C1=0.01**2, C2=0.03**2):
         super(SSIM, self).__init__()
-        self.window_size = window_size
-        self.size_average = size_average
-        self.channel = 1
-        self.window = create_window(window_size, self.channel)
+        self.kernel_size = kernel_size
+        self.channels = 1
+        self.kernel = heat_2d_kernel(kernel_size, self.channels)
+        self.C1 = C1
+        self.C2 = C2
+
+    def _compute_ssim(self, img1, img2, kernel):
+        """Computes mean SSIM between two batches of images given convolution kernel
+
+        Args:
+            img1 (torch.Tensor): (B, C, H, W)
+            img2 (torch.Tensor): (B, C, H, W)
+            kernel (torch.Tensor): convolutive kernel used for moments computation
+
+        Returns:
+            type: torch.Tensor
+
+        """
+        # Retrieve number of channels and padding values
+        channels = img1.size(1)
+        padding = self.kernel_size // 2
+
+        # Compute means tensors
+        mu1 = F.conv2d(input=img1, weight=kernel, padding=padding, groups=channels)
+        mu2 = F.conv2d(input=img2, weight=kernel, padding=padding, groups=channels)
+        mu1_sq = mu1.pow(2)
+        mu2_sq = mu2.pow(2)
+        mu1_mu2 = mu1.mul(mu2)
+
+        # Compute std tensors
+        sigma1_sq = F.conv2d(input=img1 * img1, weight=kernel, padding=padding, groups=channels).sub(mu1_sq)
+        sigma2_sq = F.conv2d(input=img2 * img2, weight=kernel, padding=padding, groups=channels).sub(mu2_sq)
+        sigma12 = F.conv2d(input=img1 * img2, weight=kernel, padding=padding, groups=channels).sub(mu1_mu2)
+
+        # Compute ssim map and return average value
+        ssim_map = ((2 * mu1_mu2 + self.C1) * (2 * sigma12 + self.C2)) / ((mu1_sq + mu2_sq + self.C1) * (sigma1_sq + sigma2_sq + self.C2))
+        return ssim_map.mean()
 
     def forward(self, img1, img2):
-        (_, channel, _, _) = img1.size()
+        """Computes mean SSIM between two batches of images
 
-        if channel == self.channel and self.window.data.type() == img1.data.type():
-            window = self.window
+        Args:
+            img1 (torch.Tensor): (B, C, H, W)
+            img2 (torch.Tensor): (B, C, H, W)
+
+        Returns:
+            type: torch.Tensor
+
+        """
+        # If needed, recompute convolutive kernel
+        channels = img1.size(1)
+        if channels == self.channels and self.kernel.data.type() == img1.data.type():
+            kernel = self.kernel
         else:
-            window = create_window(self.window_size, channel)
+            kernel = heat_2d_kernel(self.kernel_size, channels)
+            kernel = kernel.to(img1.device).type_as(img1)
+            self.kernel = kernel
+            self.channels = channels
 
-            if img1.is_cuda:
-                window = window.cuda(img1.get_device())
-            window = window.type_as(img1)
-
-            self.window = window
-            self.channel = channel
-
-        return _ssim(img1, img2, window, self.window_size, channel, self.size_average)
-
-
-def ssim(img1, img2, window_size=11, size_average=True):
-    (_, channel, _, _) = img1.size()
-    window = create_window(window_size, channel)
-
-    if img1.is_cuda:
-        window = window.cuda(img1.get_device())
-    window = window.type_as(img1)
-
-    return _ssim(img1, img2, window, window_size, channel, size_average)
+        # Compute mean ssim
+        ssim = self._compute_ssim(img1, img2, kernel)
+        return ssim
