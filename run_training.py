@@ -54,7 +54,8 @@ def build_experiment(cfg):
                                    optimizer_kwargs=cfg['optimizer'],
                                    lr_scheduler_kwargs=cfg['lr_scheduler'],
                                    dataloader_kwargs=cfg['dataset']['dataloader'],
-                                   supervision_weight=cfg['experiment']['supervision_weight'],
+                                   supervision_weight_l1=cfg['experiment']['supervision_weight_l1'],
+                                   supervision_weight_ssim=cfg['experiment']['supervision_weight_ssim'],
                                    seed=cfg['experiment']['seed'])
     return experiment
 

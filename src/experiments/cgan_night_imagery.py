@@ -33,15 +33,16 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
         dataset (MODISLandsatReflectanceFusionDataset)
         split (list[float]): dataset split ratios in [0, 1] as [train, val]
             or [train, val, test]
-        supervision_weight (float): weight supervision loss term
+        supervision_weight_l1 (float): weight supervision loss term for l1 loss
+        supervision_weight_ssim (float): weight supervision loss term for ssim loss
         dataloader_kwargs (dict): parameters of dataloaders
         optimizer_kwargs (dict): parameters of optimizer defined in LightningModule.configure_optimizers
         lr_scheduler_kwargs (dict): paramters of lr scheduler defined in LightningModule.configure_optimizers
         seed (int): random seed (default: None)
     """
     def __init__(self, generator, discriminator, dataset, split, dataloader_kwargs,
-                 optimizer_kwargs, lr_scheduler_kwargs=None, supervision_weight=None,
-                 seed=None):
+                 optimizer_kwargs, lr_scheduler_kwargs=None, supervision_weight_l1=None,
+                 supervision_weight_ssim=None, seed=None):
         super().__init__(model=generator,
                          dataset=dataset,
                          split=split,
@@ -50,7 +51,8 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
                          lr_scheduler_kwargs=lr_scheduler_kwargs,
                          criterion=nn.BCELoss(),
                          seed=seed)
-        self.supervision_weight = supervision_weight
+        self.supervision_weight_l1 = supervision_weight_l1
+        self.supervision_weight_ssim = supervision_weight_ssim
         self.discriminator = discriminator
         self.ssim_criterion = SSIM()
 
@@ -117,9 +119,9 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
         psnr, ssim, sam = self._compute_iqa_metrics(pred_target, target)
 
         # Compute L1 regularization term
-        # mae = F.smooth_l1_loss(pred_target, target)
-        mae = 1 - self.ssim_criterion(pred_target, target)
-        return gen_loss, mae, psnr, ssim, sam
+        mae = F.smooth_l1_loss(pred_target, target)
+        ssim_loss = 1 - self.ssim_criterion(pred_target, target)
+        return gen_loss, ssim_loss, mae, psnr, ssim, sam
 
     def _step_discriminator(self, source, target):
         """Runs discriminator forward pass, loss computation and classification
@@ -168,13 +170,14 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
 
         # Run either generator or discriminator training step
         if optimizer_idx == 0:
-            gen_loss, mae, psnr, ssim, sam = self._step_generator(source, target)
+            gen_loss, ssim_loss, mae, psnr, ssim, sam = self._step_generator(source, target)
             logs = {'Loss/train_generator': gen_loss,
+                    'Loss/train_ssim_loss': ssim_loss,
                     'Loss/train_mae': mae,
                     'Metric/train_psnr': psnr,
                     'Metric/train_ssim': ssim,
                     'Metric/train_sam': sam}
-            loss = gen_loss + self.supervision_weight * mae
+            loss = gen_loss + self.supervision_weight_l1 * mae + self.supervision_weight_ssim * ssim_loss
 
         if optimizer_idx == 1:
             disc_loss, fooling_rate, precision, recall = self._step_discriminator(source, target)
@@ -224,11 +227,11 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
             self.logger._logging_images = source, target
 
         # Run forward pass on generator and discriminator
-        gen_loss, mae, psnr, ssim, sam = self._step_generator(source, target)
+        gen_loss, ssim_loss, mae, psnr, ssim, sam = self._step_generator(source, target)
         disc_loss, fooling_rate, precision, recall = self._step_discriminator(source, target)
 
         # Encapsulate scores in torch tensor
-        output = torch.Tensor([gen_loss, mae, psnr, ssim, sam, disc_loss, fooling_rate, precision, recall])
+        output = torch.Tensor([gen_loss, ssim_loss, mae, psnr, ssim, sam, disc_loss, fooling_rate, precision, recall])
         return output
 
     def validation_epoch_end(self, outputs):
@@ -242,11 +245,12 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
         """
         # Average loss and metrics
         outputs = torch.stack(outputs).mean(dim=0)
-        gen_loss, mae, psnr, ssim, sam, disc_loss, fooling_rate, precision, recall = outputs
+        gen_loss, ssim_loss, mae, psnr, ssim, sam, disc_loss, fooling_rate, precision, recall = outputs
 
         # Make tensorboard logs and return
         logs = {'Loss/val_generator': gen_loss.item(),
                 'Loss/val_discriminator': disc_loss.item(),
+                'Loss/val_ssim_loss': ssim_loss.item(),
                 'Loss/val_mae': mae.item(),
                 'Metric/val_psnr': psnr.item(),
                 'Metric/val_ssim': ssim.item(),
@@ -256,7 +260,7 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
                 'Metric/val_recall': recall.item()}
 
         # Make lightning fashion output dictionnary - track discriminator max loss for validation
-        output = {'val_loss': mae,
+        output = {'val_loss': ssim_loss,
                   'log': logs,
                   'progress_bar': logs}
         return output
@@ -270,13 +274,21 @@ class cGANCloudTOPtoRGB(ImageTranslationExperiment):
         return self._discriminator
 
     @property
-    def supervision_weight(self):
-        return self._supervision_weight
+    def supervision_weight_l1(self):
+        return self._supervision_weight_l1
+
+    @property
+    def supervision_weight_ssim(self):
+        return self._supervision_weight_ssim
 
     @discriminator.setter
     def discriminator(self, discriminator):
         self._discriminator = discriminator
 
-    @supervision_weight.setter
-    def supervision_weight(self, supervision_weight):
-        self._supervision_weight = supervision_weight
+    @supervision_weight_l1.setter
+    def supervision_weight_l1(self, supervision_weight_l1):
+        self._supervision_weight_l1 = supervision_weight_l1
+
+    @supervision_weight_ssim.setter
+    def supervision_weight_ssim(self, supervision_weight_ssim):
+        self._supervision_weight_ssim = supervision_weight_ssim

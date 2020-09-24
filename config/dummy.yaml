@@ -18,8 +18,11 @@ experiment:
   # Precision
   precision: 32
 
-  # Supervision regularization weight
-  supervision_weight: 0.1
+  # Supervision L1 regularization weight
+  supervision_weight_l1: 0.01
+
+  # Supervision SSIM regularization weight
+  supervision_weight_ssim: 10
 
 
 ############################################
@@ -37,7 +40,7 @@ dataset:
   # Dataloading specifications
   dataloader:
     # Number of frames per batch
-    batch_size: 32
+    batch_size: 64
 
     # Number of workers for loading
     num_workers: 1
