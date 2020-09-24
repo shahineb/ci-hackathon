@@ -36,8 +36,8 @@ class Unet(ConvNet):
 
         self.output_layer = Conv2d(in_channels=dec_filters[-1],
                                    out_channels=out_channels,
-                                   kernel_size=1,
-                                   padding=0,
+                                   kernel_size=3,
+                                   padding=1,
                                    **out_kwargs)
 
     def forward(self, x):
