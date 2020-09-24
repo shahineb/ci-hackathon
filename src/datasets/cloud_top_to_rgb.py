@@ -16,6 +16,10 @@ class CloudTOPtoRGBDataset(Dataset):
     def _load_datasets(self):
         cloud_top_path = os.path.join(self.root, "X_train_CI20.npy")
         true_color_path = os.path.join(self.root, "Y_train_CI20.npy")
+        cloud_top_means_path = os.path.join(self.root, "means_CT_norm.npy")
+        true_color_means_path = os.path.join(self.root, "means_TC_norm.npy")
+        cloud_top_stds_path = os.path.join(self.root, "stds_CT_norm.npy")
+        true_color_stds_path = os.path.join(self.root, "stds_TC_norm.npy")
 
         self.cloud_top_dataset = np.load(cloud_top_path)
         self.true_color_dataset = np.load(true_color_path)
@@ -28,10 +32,10 @@ class CloudTOPtoRGBDataset(Dataset):
         self.true_color_dataset = self.true_color_dataset[valid_samples]
         ########
 
-        self.cloud_top_means = np.load("data_stats/means_CT_norm.npy")
-        self.cloud_top_stds = np.load("data_stats/stds_CT_norm.npy")
-        self.true_color_means = np.load("data_stats/means_TC_norm.npy")
-        self.true_color_stds = np.load("data_stats/stds_TC_norm.npy")
+        self.cloud_top_means = np.load("means_CT_norm.npy")
+        self.cloud_top_stds = np.load("stds_CT_norm.npy")
+        self.true_color_means = np.load("means_TC_norm.npy")
+        self.true_color_stds = np.load("stds_TC_norm.npy")
 
 
     def __getitem__(self, idx):
