@@ -1,17 +1,20 @@
 # Climate Informatics 2020 Data Challenge
 
-In the context of the [Climate Informatics 2020 conference](https://ci2020.web.ox.ac.uk/home) data challenge, we attempt to predict visible imagery at night using thermal infra-red observation.
+_In the context of the [Climate Informatics 2020 conference](https://ci2020.web.ox.ac.uk/home) data challenge, we attempt to predict visible imagery at night using thermal infra-red observation._
 
 ## Getting started
 
 __From command line__
 
-Setup a configuration file specifying experiment hyperparameters, templates provided here.
+Setup a configuration file specifying experiment hyperparameters, templates provided [here](https://github.com/shahineb/ci-hackathon/tree/master/config).
+
 Then run
 
 ```
 $ python run_training.py --cfg=path_to_config_file --o=path_to_logs_directory --device=gpu_id
 ```
+
+To reproduce the experiment submitted to the hackathon, one shall use configurations specfied by `config/base_unet.yaml`
 
 __From a notebook__
 
