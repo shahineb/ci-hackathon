@@ -1,10 +1,11 @@
 """
 Runs inference on testing set
 
-Usage: run_inference.py --cfg=<config_file_path> --chkpt=<path_to_checkpoint>  --o=<output_path>
+Usage: run_inference.py --cfg=<config_file_path> --data=<path_to_input_data> --chkpt=<path_to_checkpoint>  --o=<output_path>
 
 Options:
   --cfg=<config_file_path>      Path to experiment configuration file
+  --data=<path_to_input_data>   Path to numpy input data file to run inference on
   --chkpt=<path_to_checkpoint>  Path to model checkpoint to load
   --o=<output_path>             Path to inference output file
 """
@@ -21,10 +22,10 @@ from src.utils import load_yaml
 def main(args, cfg):
     experiment = build_experiment(args, cfg)
     to_tensor = ToTensor()
-    Xtest = np.load('data/X_test_CI20_phase1.npy')
+    X = np.load(args['--data'])
 
-    predictions = np.zeros_like(Xtest)
-    for i, x in enumerate(Xtest):
+    predictions = np.zeros_like(X)
+    for i, x in enumerate(X):
         with torch.no_grad():
             prediction = experiment.model(to_tensor(x).unsqueeze(0).cuda())
         predictions[i] = prediction.squeeze().permute(1, 2, 0).detach().cpu().numpy()
@@ -44,7 +45,8 @@ def build_experiment(args, cfg):
                                                         optimizer_kwargs=cfg['optimizer'],
                                                         lr_scheduler_kwargs=cfg['lr_scheduler'],
                                                         dataloader_kwargs=cfg['dataset']['dataloader'],
-                                                        supervision_weight=cfg['experiment']['supervision_weight'],
+                                                        supervision_weight_l1=cfg['experiment']['supervision_weight_l1'],
+                                                        supervision_weight_ssim=cfg['experiment']['supervision_weight_ssim'],
                                                         seed=cfg['experiment']['seed'],
                                                         checkpoint_path=args['--chkpt'])
     return experiment

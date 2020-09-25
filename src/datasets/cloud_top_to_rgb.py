@@ -7,24 +7,36 @@ import torchvision.transforms as transforms
 
 
 class CloudTOPtoRGBDataset(Dataset):
+    """Dataset instance loading couple of top of cloud infrared image and
+    its corresponding RGB optical counterpart
 
+    Args:
+        root (str): path to directory containing data
+    """
     def __init__(self, root):
         self.root = root
         self.transform = transforms.ToTensor()
         self._load_datasets()
+
+    def _filter_black_frames(self, threshold=0.99):
+        """Drops frames out of the dataset if they have a percentage of
+        black pixels greater than some threshold
+
+        Args:
+            threshold (float): greatest percentage of black pixels allowed
+
+        """
+        fraction_of_black_pixels = np.all(self.true_color_dataset == 0., axis=-1).mean(axis=(1, 2))
+        valid_samples = fraction_of_black_pixels > threshold
+        self.cloud_top_dataset = self.cloud_top_dataset[valid_samples]
+        self.true_color_dataset = self.true_color_dataset[valid_samples]
 
     def _load_datasets(self):
         cloud_top_path = os.path.join(self.root, "X_train_CI20.npy")
         true_color_path = os.path.join(self.root, "Y_train_CI20.npy")
         self.cloud_top_dataset = np.load(cloud_top_path)
         self.true_color_dataset = np.load(true_color_path)
-        ########
-        threshold = 0.01
-        fraction_of_null_pixels = np.all(self.true_color_dataset == 0., axis=-1).mean(axis=(1, 2))
-        valid_samples = fraction_of_null_pixels < threshold
-        self.cloud_top_dataset = self.cloud_top_dataset[valid_samples]
-        self.true_color_dataset = self.true_color_dataset[valid_samples]
-        ########
+        self._filter_black_frames()
 
     def __getitem__(self, idx):
         # Load frames

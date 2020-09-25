@@ -9,7 +9,7 @@ from .utils import process_tensor_for_vis
 
 
 class cGANCloudTOPtoRGB(ImageTranslationExperiment):
-    """Setup to train  conditional GANs at nightly images from
+    """Setup to train  conditional GANs at generating optical RGB images from
         IR cloud top inputs
 
                              +-----------+
