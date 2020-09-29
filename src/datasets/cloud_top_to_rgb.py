@@ -42,8 +42,8 @@ class CloudTOPtoRGBDataset(Dataset):
     def _compute_image_statistics(self):
         self.mean_image = {'cloud_top': self.cloud_top_dataset.mean(axis=0),
                            'true_color': self.true_color_dataset.mean(axis=0)}
-        self.std_image = {'cloud_top': self.cloud_top_dataset.std(axis=0),
-                          'true_color': self.true_color_dataset.std(axis=0)}
+        self.std_image = {'cloud_top': self.cloud_top_dataset.std(axis=0).clip(min=np.finfo(np.float32).eps),
+                          'true_color': self.true_color_dataset.std(axis=0).clip(min=np.finfo(np.float32).eps)}
 
     def __getitem__(self, idx):
         # Load frames
