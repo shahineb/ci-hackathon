@@ -26,7 +26,7 @@ class CloudTOPtoRGBDataset(Dataset):
         self._filter_black_frames()
         self._compute_image_statistics()
 
-    def _filter_black_frames(self, threshold=0.99):
+    def _filter_black_frames(self, threshold=0.01):
         """Drops frames out of the dataset if they have a percentage of
         black pixels greater than some threshold
 
@@ -35,7 +35,7 @@ class CloudTOPtoRGBDataset(Dataset):
 
         """
         fraction_of_black_pixels = np.all(self.true_color_dataset == 0., axis=-1).mean(axis=(1, 2))
-        valid_samples = fraction_of_black_pixels > threshold
+        valid_samples = fraction_of_black_pixels < threshold
         self.cloud_top_dataset = self.cloud_top_dataset[valid_samples]
         self.true_color_dataset = self.true_color_dataset[valid_samples]
 
