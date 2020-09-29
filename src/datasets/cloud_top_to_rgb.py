@@ -18,6 +18,13 @@ class CloudTOPtoRGBDataset(Dataset):
         self.transform = transforms.ToTensor()
         self._load_datasets()
 
+    def _load_datasets(self):
+        cloud_top_path = os.path.join(self.root, "X_train_CI20.npy")
+        true_color_path = os.path.join(self.root, "Y_train_CI20.npy")
+        self.cloud_top_dataset = np.load(cloud_top_path)
+        self.true_color_dataset = np.load(true_color_path)
+        self._filter_black_frames()
+
     def _filter_black_frames(self, threshold=0.99):
         """Drops frames out of the dataset if they have a percentage of
         black pixels greater than some threshold
@@ -31,17 +38,20 @@ class CloudTOPtoRGBDataset(Dataset):
         self.cloud_top_dataset = self.cloud_top_dataset[valid_samples]
         self.true_color_dataset = self.true_color_dataset[valid_samples]
 
-    def _load_datasets(self):
-        cloud_top_path = os.path.join(self.root, "X_train_CI20.npy")
-        true_color_path = os.path.join(self.root, "Y_train_CI20.npy")
-        self.cloud_top_dataset = np.load(cloud_top_path)
-        self.true_color_dataset = np.load(true_color_path)
-        self._filter_black_frames()
+    def _compute_image_statistics(self):
+        self.mean_image = {'cloud_top': self.cloud_top_dataset.mean(axis=0),
+                           'true_color': self.true_color_dataset.mean(axis=0)}
+        self.std_image = {'cloud_top': self.cloud_top_dataset.std(axis=0),
+                          'true_color': self.true_color_dataset.std(axis=0)}
 
     def __getitem__(self, idx):
         # Load frames
         cloud_top = self.cloud_top_dataset[idx]
         true_color = self.true_color_dataset[idx]
+
+        # Normalize images
+        cloud_top = (cloud_top - self.mean_image['cloud_top']) / self.std_image['cloud_top']
+        true_color = (true_color - self.mean_image['true_color']) / self.std_image['true_color']
 
         # Convert to tensors
         cloud_top = self.transform(cloud_top)
