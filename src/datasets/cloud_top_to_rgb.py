@@ -24,6 +24,7 @@ class CloudTOPtoRGBDataset(Dataset):
         self.cloud_top_dataset = np.load(cloud_top_path)
         self.true_color_dataset = np.load(true_color_path)
         self._filter_black_frames()
+        self._compute_image_statistics()
 
     def _filter_black_frames(self, threshold=0.99):
         """Drops frames out of the dataset if they have a percentage of
