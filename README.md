@@ -25,6 +25,10 @@ __Results__
 <p align="center">
   <img width="65%" src="docs/source/img/night_predictions.gif"/>
 </p>
+<p align="center">
+  <em> Example of predicted visible images from nightly infrared inputs </em>
+</p>
+
 
 
 ## Installation
