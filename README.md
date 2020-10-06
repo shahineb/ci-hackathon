@@ -1,8 +1,10 @@
 # Climate Informatics 2020 Data Challenge
 
-_In the context of the [Climate Informatics 2020 conference](https://ci2020.web.ox.ac.uk/home) data challenge, we attempt to predict visible imagery at night using thermal infra-red observation._
+_In the context of the [Climate Informatics 2020 conference](https://ci2020.web.ox.ac.uk/home) data challenge, we attempt to predict visible imagery at night using thermal infra-red observation. More details on the challenge and datasets in [here](https://competitions.codalab.org/competitions/26644)_
 
 ## Getting started
+
+We propose to train a [pix2pix](https://phillipi.github.io/pix2pix/)-like cGANs at spectral domain translation.
 
 __From command line__
 
@@ -14,11 +16,18 @@ Then run
 $ python run_training.py --cfg=path_to_config_file --o=path_to_logs_directory --device=gpu_id
 ```
 
-To reproduce the experiment submitted to the hackathon, one shall use configurations specfied by `config/base_unet.yaml`
+To reproduce the experiment submitted to the hackathon, one should use configurations specfied by `config/base_unet.yaml`
 
 __From a notebook__
 
 See [demonstration notebook](https://github.com/shahineb/ci-hackathon/blob/master/notebooks/demo.ipynb) on how to run an experiment.
+
+__Results__
+
+<p align="center">
+  <img width="100%" src="docs/source/img/night_predictions.gif" />
+  <em> Example of predicted visible images from nightly infrared inputs </em>
+</p>
 
 
 ## Installation
