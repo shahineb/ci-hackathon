@@ -23,8 +23,7 @@ See [demonstration notebook](https://github.com/shahineb/ci-hackathon/blob/maste
 __Results__
 
 <p align="center">
-  <img width="65%" src="docs/source/img/night_predictions.gif" />
-  <em> Example of predicted visible images from nightly infrared inputs </em>
+  <img width="65%" src="docs/source/img/night_predictions.gif"/>
 </p>
 
 
